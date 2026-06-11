@@ -2,7 +2,7 @@
 
 A production-grade persistent sales assistant with cross-session memory, real tool use, and structured self-evaluation on every response.
 
-**Live URL:** `https://YOUR-APP.railway.app` *(update after deploying)*
+**Live URL:** https://nexusai-sales-agent-production.up.railway.app/docs
 
 ---
 
@@ -173,7 +173,7 @@ These two `curl` calls demonstrate memory persisting across separate API calls. 
 ### Call 1 — Set context (ask about pricing)
 
 ```bash
-curl -s -X POST https://YOUR-APP.railway.app/chat/demo-user-001 \
+curl -s -X POST https://nexusai-sales-agent-production.up.railway.app/docs \
   -H "Content-Type: application/json" \
   -d '{"message": "What does the Enterprise plan cost and what does it include?"}' \
   | jq '{response, tools_called, session_id, "eval_confidence": .eval.confidence}'
@@ -184,7 +184,7 @@ curl -s -X POST https://YOUR-APP.railway.app/chat/demo-user-001 \
 ### Call 2 — New session, agent recalls the context
 
 ```bash
-curl -s -X POST https://YOUR-APP.railway.app/chat/demo-user-001 \
+curl -s -X POST https://nexusai-sales-agent-production.up.railway.app/docs \
   -H "Content-Type: application/json" \
   -d '{"message": "Does the plan we discussed include audit logs? And what about HIPAA?"}' \
   | jq '{response, tools_called, session_id, "eval_confidence": .eval.confidence}'
@@ -195,7 +195,7 @@ curl -s -X POST https://YOUR-APP.railway.app/chat/demo-user-001 \
 ### Verify the full history
 
 ```bash
-curl -s https://YOUR-APP.railway.app/chat/demo-user-001/history \
+curl -s https://nexusai-sales-agent-production.up.railway.app/docs#/chat/get_history_chat__user_id__history_get \
   | jq '{total_messages, sessions: [.messages[] | .session_id] | unique}'
 ```
 
@@ -206,7 +206,7 @@ You should see `total_messages: 4` (2 user + 2 assistant) across **2 distinct se
 ## Local Setup
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/nexusai-sales-agent
+git clone https://github.com/samikshaghodpage03-ui/NexusAI-Sales-Agent
 cd nexusai-sales-agent
 
 python -m venv .venv
