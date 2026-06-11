@@ -32,9 +32,9 @@ User Request
 │  Agent Loop         │     │  Eval Service                │
 │  (agents/agent_     │     │  (services/eval_service.py)  │
 │   loop.py)          │     │                              │
-│                     │     │  Separate Claude call with   │
+│                     │     │  Separate Gemini call with   │
 │  1. Build messages  │     │  strict eval prompt:         │
-│  2. Call Claude API │     │  • groundedness (0-1)        │
+│  2. Call Gemini API │     │  • groundedness (0-1)        │
 │  3. Handle tool_use │     │  • relevance (0-1)           │
 │  4. Loop until      │     │  • confidence (0-1)          │
 │     end_turn        │     │  • flagged (bool)            │
@@ -80,11 +80,11 @@ User Request
 
 1. `POST /chat/alice` arrives with `{"message": "Does enterprise include SSO?"}`
 2. **ChatService** creates a session UUID, saves Alice's message to DB
-3. **AgentLoop** opens an agentic loop with Claude + tool schemas
-4. Claude calls `get_user_memory("alice")` → DB returns Alice's prior questions (e.g., she asked about pricing last session)
-5. Claude calls `search_catalog("enterprise SSO")` → returns the Enterprise plan JSON
-6. Claude synthesises both and returns: *"Yes — the Enterprise plan ($499/mo) includes SSO via SAML 2.0, Okta, and Azure AD..."*
-7. **EvalService** makes a *separate* Claude call: "Score this response given the catalog data"
+3. **AgentLoop** opens an agentic loop with Gemini + tool schemas
+4. Gemini calls `get_user_memory("alice")` → DB returns Alice's prior questions (e.g., she asked about pricing last session)
+5. Gemini calls `search_catalog("enterprise SSO")` → returns the Enterprise plan JSON
+6. Gemini synthesises both and returns: *"Yes — the Enterprise plan ($499/mo) includes SSO via SAML 2.0, Okta, and Azure AD..."*
+7. **EvalService** makes a *separate* Gemini call: "Score this response given the catalog data"
 8. Returns `{groundedness: 0.95, relevance: 0.92, confidence: 0.90, flagged: false}`
 9. If `confidence < 0.65`, auto-flag and call `flag_for_human()`
 10. Everything is saved to DB; structured JSON response returned to caller
@@ -116,7 +116,7 @@ Memory is stored in a **SQLite `messages` table** with full message history per 
 | 1M+ users | [Mem0](https://mem0.ai) or Redis + vector store. Implement `Mem0Backend(MemoryBackend)` in one file. |
 | Enterprise | Hybrid: recent turns in Redis (fast), long-term facts in Postgres + pgvector for semantic retrieval |
 
-**Memory summarisation (bonus feature):** Once a user has 50+ messages, a background job could call Claude to compress them into a single `user_memory_summaries` row. The `upsert_summary()` method is already wired in — just needs a periodic task (Celery/APScheduler).
+**Memory summarisation (bonus feature):** Once a user has 50+ messages, a background job could call Gemini to compress them into a single `user_memory_summaries` row. The `upsert_summary()` method is already wired in — just needs a periodic task (Celery/APScheduler).
 
 ---
 
@@ -124,7 +124,7 @@ Memory is stored in a **SQLite `messages` table** with full message history per 
 
 ### How it works
 
-Every `/chat` response triggers a **separate Claude API call** with a strict evaluator system prompt. The prompt instructs the model to score three independent dimensions and return only JSON — no prose, no fences.
+Every `/chat` response triggers a **separate Gemini API call** with a strict evaluator system prompt. The prompt instructs the model to score three independent dimensions and return only JSON — no prose, no fences.
 
 ```
 groundedness: Is every claim traceable to the tool data? (hallucination detector)
@@ -146,7 +146,7 @@ The eval call is *independent* from the generation call — the evaluator sees t
 
 ### What I'd replace it with at production scale
 
-- **Short term:** A dedicated smaller eval model (GPT-4o-mini or Claude Haiku) — faster and cheaper than Sonnet for scoring
+- **Short term:** A dedicated smaller eval model (GPT-4o-mini or Gemini 1.5 Flash-8B) — faster and cheaper than Gemini 1.5 Flash for scoring
 - **Medium term:** [RAGAS](https://github.com/explodinggradients/ragas) for RAG-specific evaluation (answer faithfulness, context precision)
 - **Long term:** Human-in-the-loop labelling pipeline to build a fine-tuned eval model trained on real sales conversations
 
@@ -215,7 +215,8 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# Edit .env — add your ANTHROPIC_API_KEY
+# Edit .env — add your GEMINI_API_KEY
+# Get a free key at: https://aistudio.google.com/apikey
 
 uvicorn main:app --reload
 ```
@@ -228,7 +229,7 @@ Open `http://localhost:8000/docs` for the interactive API explorer.
 
 1. Push repo to GitHub
 2. New project → Deploy from GitHub repo
-3. Add environment variable: `ANTHROPIC_API_KEY=sk-ant-...`
+3. Add environment variable: `GEMINI_API_KEY=your_key_here`
 4. Railway auto-detects `railway.toml` and runs `uvicorn main:app --host 0.0.0.0 --port $PORT`
 5. Copy the generated URL into this README
 
